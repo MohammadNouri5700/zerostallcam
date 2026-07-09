@@ -36,3 +36,4 @@ google-services.json
 # OS Files
 .DS_Store
 trace_processor
+/.artifacts
