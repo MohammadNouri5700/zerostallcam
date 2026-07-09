@@ -6,6 +6,8 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#include <unordered_map>
+
 namespace ecs {
 
 struct GraphicsComponent {
@@ -28,6 +30,7 @@ struct GraphicsComponent {
 
     // EGL Image for Hardware Buffer mapping
     EGLImageKHR eglImage = EGL_NO_IMAGE_KHR;
+    std::unordered_map<AHardwareBuffer*, EGLImageKHR> eglImageCache;
 
     // Extension pointers
     PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
@@ -36,6 +39,15 @@ struct GraphicsComponent {
     PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID = nullptr;
 
     uint64_t frameCount = 0;
+
+#ifdef MEASUREMENT_ENABLED
+    void (*glGetQueryObjectui64vEXT)(GLuint, GLenum, GLuint64*) = nullptr;
+    GLuint gpuTimerQuery = 0;
+    double totalCpuTimeMs = 0;
+    double totalGpuTimeMs = 0;
+    std::chrono::steady_clock::time_point lastLogTime;
+    uint32_t measurementFrameCount = 0;
+#endif
 };
 
 } // namespace ecs

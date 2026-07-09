@@ -8,6 +8,10 @@
 #define LOG_TAG "ZeroStallRenderer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
+#ifndef GL_TIME_ELAPSED_EXT
+#define GL_TIME_ELAPSED_EXT 0x88BF
+#endif
+
 namespace ecs {
 
 GLuint RenderSystem::mTransformUbo = 0;
@@ -47,9 +51,10 @@ void main() {
     } else {
         type = 1.0; int vIdx = idx - 6; int cIdx = vIdx / 6; int tIdx = vIdx % 6;
         int code;
-        int h = int(timestamp.timeData.x + 0.5);
-        int m = int(timestamp.timeData.y + 0.5);
-        int s = int(timestamp.timeData.z + 0.5);
+        float epoch = timestamp.timeData.x;
+        int h = int(mod(epoch / 3600.0, 24.0));
+        int m = int(mod(epoch / 60.0, 60.0));
+        int s = int(mod(epoch, 60.0));
         if (cIdx == 0) code = h / 10; else if (cIdx == 1) code = h % 10;
         else if (cIdx == 2) code = 10; else if (cIdx == 3) code = m / 10;
         else if (cIdx == 4) code = m % 10; else if (cIdx == 5) code = 10;
@@ -107,14 +112,22 @@ void RenderSystem::Init(GraphicsComponent& graphics) {
 
     glGenVertexArrays(1, &mDummyVao);
     glBindVertexArray(mDummyVao);
+
+#ifdef MEASUREMENT_ENABLED
+    glGenQueries(1, &graphics.gpuTimerQuery);
+    graphics.lastLogTime = std::chrono::steady_clock::now();
+#endif
 }
 
 void RenderSystem::UpdateCameraBuffer(GraphicsComponent& graphics, AHardwareBuffer* buffer) {
-    if (graphics.eglImage != EGL_NO_IMAGE_KHR) {
-        graphics.eglDestroyImageKHR(graphics.display, graphics.eglImage);
+    auto it = graphics.eglImageCache.find(buffer);
+    if (it != graphics.eglImageCache.end()) {
+        graphics.eglImage = it->second;
+    } else {
+        EGLClientBuffer clientBuffer = graphics.eglGetNativeClientBufferANDROID(buffer);
+        graphics.eglImage = graphics.eglCreateImageKHR(graphics.display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr);
+        graphics.eglImageCache[buffer] = graphics.eglImage;
     }
-    EGLClientBuffer clientBuffer = graphics.eglGetNativeClientBufferANDROID(buffer);
-    graphics.eglImage = graphics.eglCreateImageKHR(graphics.display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, graphics.cameraTextureId);
     graphics.glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, graphics.eglImage);
@@ -131,8 +144,8 @@ void RenderSystem::SetFontAtlas(GraphicsComponent& graphics, int width, int heig
 
 void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformComponent& transform, const TimestampComponent& timestamp) {
 #ifdef MEASUREMENT_ENABLED
-    auto startTime = std::chrono::steady_clock::now();
     ATrace_beginSection("ZeroStall_DrawFrame");
+    glBeginQuery(GL_TIME_ELAPSED_EXT, graphics.gpuTimerQuery);
 #endif
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -141,13 +154,11 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
 
     // Update Transform UBO
     glBindBuffer(GL_UNIFORM_BUFFER, mTransformUbo);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(TransformComponent), &transform, GL_STREAM_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, mTransformUbo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(TransformComponent), &transform);
 
     // Update Timestamp UBO
     glBindBuffer(GL_UNIFORM_BUFFER, mTimestampUbo);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(TimestampComponent), &timestamp, GL_STREAM_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 2, mTimestampUbo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(TimestampComponent), &timestamp);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, graphics.cameraTextureId);
@@ -165,6 +176,7 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
     graphics.frameCount++;
 
 #ifdef MEASUREMENT_ENABLED
+    glEndQuery(GL_TIME_ELAPSED_EXT);
     ATrace_endSection();
 #endif
 }
@@ -176,9 +188,16 @@ void RenderSystem::Deinit(GraphicsComponent& graphics) {
     if (mTransformUbo != 0) glDeleteBuffers(1, &mTransformUbo);
     if (mTimestampUbo != 0) glDeleteBuffers(1, &mTimestampUbo);
     if (mDummyVao != 0) glDeleteVertexArrays(1, &mDummyVao);
-    if (graphics.eglImage != EGL_NO_IMAGE_KHR) {
-        graphics.eglDestroyImageKHR(graphics.display, graphics.eglImage);
+
+#ifdef MEASUREMENT_ENABLED
+    if (graphics.gpuTimerQuery != 0) glDeleteQueries(1, &graphics.gpuTimerQuery);
+#endif
+
+    for (auto const& [buffer, image] : graphics.eglImageCache) {
+        graphics.eglDestroyImageKHR(graphics.display, image);
     }
+    graphics.eglImageCache.clear();
+    graphics.eglImage = EGL_NO_IMAGE_KHR;
 }
 
 } // namespace ecs

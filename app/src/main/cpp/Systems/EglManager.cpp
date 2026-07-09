@@ -41,6 +41,10 @@ bool EglManager::Init(GraphicsComponent& graphics, ANativeWindow* window) {
     graphics.glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
     graphics.eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress("eglGetNativeClientBufferANDROID");
 
+#ifdef MEASUREMENT_ENABLED
+    graphics.glGetQueryObjectui64vEXT = (void (*)(GLuint, GLenum, GLuint64*))eglGetProcAddress("glGetQueryObjectui64vEXT");
+#endif
+
     return true;
 }
 

@@ -4,7 +4,8 @@
 namespace ecs {
 
 struct alignas(16) TimestampComponent {
-    float h, m, s, p;
+    float epochSeconds;
+    float p1, p2, p3; // Padding to 16 bytes
 };
 
 } // namespace ecs

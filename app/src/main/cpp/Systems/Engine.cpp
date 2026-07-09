@@ -47,30 +47,15 @@ void Engine::SetFontAtlas(int width, int height, void* pixels) {
 }
 
 void Engine::UpdateTimestamp() {
-    time_t rawtime;
-    struct tm * timeinfo;
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-    mTimestamp.h = (float)timeinfo->tm_hour;
-    mTimestamp.m = (float)timeinfo->tm_min;
-    mTimestamp.s = (float)timeinfo->tm_sec;
-    mTimestamp.p = 0.0f;
-
-    static int lastSec = -1;
-    if ((int)mTimestamp.s != lastSec) {
-        LOGI("Time: %02d:%02d:%02d", (int)mTimestamp.h, (int)mTimestamp.m, (int)mTimestamp.s);
-        lastSec = (int)mTimestamp.s;
-    }
+    auto now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+    mTimestamp.epochSeconds = (float)seconds.count();
 }
 
 void Engine::DrawFrame() {
 #ifdef MEASUREMENT_ENABLED
-    static auto lastLogTime = std::chrono::steady_clock::now();
-    static int frameCount = 0;
-    static double totalWorkTime = 0;
-
     auto frameStart = std::chrono::steady_clock::now();
-    ATrace_beginSection("ZeroStall_TotalFrame");
 #endif
 
     UpdateTimestamp();
@@ -90,25 +75,36 @@ void Engine::DrawFrame() {
 
 #ifdef MEASUREMENT_ENABLED
     auto frameEnd = std::chrono::steady_clock::now();
-    std::chrono::duration<double, std::milli> workDuration = frameEnd - frameStart;
-    totalWorkTime += workDuration.count();
-    frameCount++;
+    std::chrono::duration<double, std::milli> cpuDuration = frameEnd - frameStart;
+    mGraphics.totalCpuTimeMs += cpuDuration.count();
+    mGraphics.measurementFrameCount++;
+
+    // Collect GPU time if available (don't stall)
+    GLuint gpuTimeAvailable = 0;
+    glGetQueryObjectuiv(mGraphics.gpuTimerQuery, GL_QUERY_RESULT_AVAILABLE, &gpuTimeAvailable);
+    if (gpuTimeAvailable && mGraphics.glGetQueryObjectui64vEXT) {
+        GLuint64 gpuTimeNs = 0;
+        mGraphics.glGetQueryObjectui64vEXT(mGraphics.gpuTimerQuery, GL_QUERY_RESULT, &gpuTimeNs);
+        mGraphics.totalGpuTimeMs += (double)gpuTimeNs / 1000000.0;
+    }
 
     auto currentTime = std::chrono::steady_clock::now();
-    std::chrono::duration<double, std::milli> elapsedSinceLog = currentTime - lastLogTime;
+    std::chrono::duration<double, std::milli> elapsedSinceLog = currentTime - mGraphics.lastLogTime;
 
     if (elapsedSinceLog.count() >= 1000.0) {
-        double avgFps = (double)frameCount / (elapsedSinceLog.count() / 1000.0);
-        double avgWork = totalWorkTime / (double)frameCount;
-        LOGI("Performance Summary | FPS: %.1f | Avg Work: %.2f ms | Budget Used: %.1f%%",
-             avgFps, avgWork, (avgWork / 16.6) * 100.0);
+        double avgFps = (double)mGraphics.measurementFrameCount / (elapsedSinceLog.count() / 1000.0);
+        double avgCpu = mGraphics.totalCpuTimeMs / (double)mGraphics.measurementFrameCount;
+        double avgGpu = mGraphics.totalGpuTimeMs / (double)mGraphics.measurementFrameCount;
+
+        LOGI("Performance Summary | FPS: %.1f | CPU: %.2f ms | GPU: %.2f ms | Cache: %zu",
+             avgFps, avgCpu, avgGpu, mGraphics.eglImageCache.size());
 
         // Reset metrics
-        lastLogTime = currentTime;
-        frameCount = 0;
-        totalWorkTime = 0;
+        mGraphics.lastLogTime = currentTime;
+        mGraphics.measurementFrameCount = 0;
+        mGraphics.totalCpuTimeMs = 0;
+        mGraphics.totalGpuTimeMs = 0;
     }
-    ATrace_endSection();
 #endif
 }
 
