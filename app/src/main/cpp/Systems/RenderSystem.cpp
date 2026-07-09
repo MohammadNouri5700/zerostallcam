@@ -114,7 +114,9 @@ void RenderSystem::Init(GraphicsComponent& graphics) {
     glBindVertexArray(mDummyVao);
 
 #ifdef MEASUREMENT_ENABLED
-    glGenQueries(1, &graphics.gpuTimerQuery);
+    if (graphics.gpuTimerSupported) {
+        glGenQueries(1, &graphics.gpuTimerQuery);
+    }
     graphics.lastLogTime = std::chrono::steady_clock::now();
 #endif
 }
@@ -145,7 +147,9 @@ void RenderSystem::SetFontAtlas(GraphicsComponent& graphics, int width, int heig
 void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformComponent& transform, const TimestampComponent& timestamp) {
 #ifdef MEASUREMENT_ENABLED
     ATrace_beginSection("ZeroStall_DrawFrame");
-    glBeginQuery(GL_TIME_ELAPSED_EXT, graphics.gpuTimerQuery);
+    if (graphics.gpuTimerSupported) {
+        glBeginQuery(GL_TIME_ELAPSED_EXT, graphics.gpuTimerQuery);
+    }
 #endif
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -176,7 +180,9 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
     graphics.frameCount++;
 
 #ifdef MEASUREMENT_ENABLED
-    glEndQuery(GL_TIME_ELAPSED_EXT);
+    if (graphics.gpuTimerSupported) {
+        glEndQuery(GL_TIME_ELAPSED_EXT);
+    }
     ATrace_endSection();
 #endif
 }

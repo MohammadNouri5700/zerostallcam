@@ -43,6 +43,13 @@ bool EglManager::Init(GraphicsComponent& graphics, ANativeWindow* window) {
 
 #ifdef MEASUREMENT_ENABLED
     graphics.glGetQueryObjectui64vEXT = (void (*)(GLuint, GLenum, GLuint64*))eglGetProcAddress("glGetQueryObjectui64vEXT");
+    const char* extensions = (const char*)glGetString(GL_EXTENSIONS);
+    if (extensions && strstr(extensions, "GL_EXT_disjoint_timer_query") && graphics.glGetQueryObjectui64vEXT) {
+        graphics.gpuTimerSupported = true;
+        LOGI("GPU Timer Query supported");
+    } else {
+        LOGI("GPU Timer Query NOT supported (Emulator/Low-end device)");
+    }
 #endif
 
     return true;

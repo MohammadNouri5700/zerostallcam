@@ -43,6 +43,7 @@ struct GraphicsComponent {
 #ifdef MEASUREMENT_ENABLED
     void (*glGetQueryObjectui64vEXT)(GLuint, GLenum, GLuint64*) = nullptr;
     GLuint gpuTimerQuery = 0;
+    bool gpuTimerSupported = false;
     double totalCpuTimeMs = 0;
     double totalGpuTimeMs = 0;
     std::chrono::steady_clock::time_point lastLogTime;

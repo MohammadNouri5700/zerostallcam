@@ -79,13 +79,15 @@ void Engine::DrawFrame() {
     mGraphics.totalCpuTimeMs += cpuDuration.count();
     mGraphics.measurementFrameCount++;
 
-    // Collect GPU time if available (don't stall)
-    GLuint gpuTimeAvailable = 0;
-    glGetQueryObjectuiv(mGraphics.gpuTimerQuery, GL_QUERY_RESULT_AVAILABLE, &gpuTimeAvailable);
-    if (gpuTimeAvailable && mGraphics.glGetQueryObjectui64vEXT) {
-        GLuint64 gpuTimeNs = 0;
-        mGraphics.glGetQueryObjectui64vEXT(mGraphics.gpuTimerQuery, GL_QUERY_RESULT, &gpuTimeNs);
-        mGraphics.totalGpuTimeMs += (double)gpuTimeNs / 1000000.0;
+    if (mGraphics.gpuTimerSupported) {
+        // Collect GPU time if available (don't stall)
+        GLuint gpuTimeAvailable = 0;
+        glGetQueryObjectuiv(mGraphics.gpuTimerQuery, GL_QUERY_RESULT_AVAILABLE, &gpuTimeAvailable);
+        if (gpuTimeAvailable && mGraphics.glGetQueryObjectui64vEXT) {
+            GLuint64 gpuTimeNs = 0;
+            mGraphics.glGetQueryObjectui64vEXT(mGraphics.gpuTimerQuery, GL_QUERY_RESULT, &gpuTimeNs);
+            mGraphics.totalGpuTimeMs += (double)gpuTimeNs / 1000000.0;
+        }
     }
 
     auto currentTime = std::chrono::steady_clock::now();
