@@ -74,11 +74,6 @@ Vsync -> JNI -> Engine -> Buffer -> OpenGL -> SurfaceFlinger -> Display
 
 ## **Getting Started**
 
-### **Prerequisites**
-*   Android Studio Ladybug (or newer)
-*   Android NDK (Side-by-side)
-*   CMake 3.22.1+
-
 ### **Build Instructions**
 1.  **Clone the repository:**
     ```bash
