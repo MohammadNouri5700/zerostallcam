@@ -30,9 +30,10 @@ Engine::~Engine() {
     BufferSystem::Deinit(mBuffer);
 }
 
-void Engine::Init(ANativeWindow* window) {
+void Engine::Init(ANativeWindow* window, AAssetManager* assetManager) {
+    mAssetManager = assetManager;
     EglManager::Init(mGraphics, window);
-    RenderSystem::Init(mGraphics);
+    RenderSystem::Init(mGraphics, mAssetManager);
 
     mTransform.sw = (float)ANativeWindow_getWidth(window);
     mTransform.sh = (float)ANativeWindow_getHeight(window);
@@ -50,17 +51,28 @@ void Engine::UpdateTimestamp() {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-    mTimestamp.epochSeconds = (float)seconds.count();
+    mTimestamp.epochSeconds = (int32_t)seconds.count();
 }
 
 void Engine::DrawFrame() {
 #ifdef MEASUREMENT_ENABLED
     auto frameStart = std::chrono::steady_clock::now();
+    ATrace_beginSection("ZeroStall_UpdateTimestamp");
 #endif
 
     UpdateTimestamp();
 
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+    ATrace_beginSection("ZeroStall_AcquireBuffer");
+#endif
+
     AHardwareBuffer* buffer = BufferSystem::AcquireLatestBuffer(mBuffer);
+
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+#endif
+
     if (buffer) {
         RenderSystem::UpdateCameraBuffer(mGraphics, buffer);
     }

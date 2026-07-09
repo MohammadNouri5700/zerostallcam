@@ -7,6 +7,7 @@
 #include "../Components/TransformComponent.h"
 #include "../Components/TimestampComponent.h"
 #include <android/native_window.h>
+#include <android/asset_manager.h>
 
 namespace ecs {
 
@@ -15,7 +16,7 @@ public:
     Engine();
     ~Engine();
 
-    void Init(ANativeWindow* window);
+    void Init(ANativeWindow* window, AAssetManager* assetManager);
     void StartCamera();
     void SetFontAtlas(int width, int height, void* pixels);
     void DrawFrame();
@@ -26,6 +27,7 @@ private:
     GraphicsComponent mGraphics;
     TransformComponent mTransform;
     TimestampComponent mTimestamp;
+    AAssetManager* mAssetManager = nullptr;
 
     void UpdateTimestamp();
 };

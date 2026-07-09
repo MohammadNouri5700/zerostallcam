@@ -18,76 +18,8 @@ GLuint RenderSystem::mTransformUbo = 0;
 GLuint RenderSystem::mTimestampUbo = 0;
 GLuint RenderSystem::mDummyVao = 0;
 
-const char* VS = R"(#version 300 es
-layout(std140) uniform TransformBlock { vec4 s_c; vec4 rot_p; } transform;
-layout(std140) uniform TimestampBlock { vec4 timeData; } timestamp;
-out vec2 vTexCoord; out float vType;
-const float kTextPosX = -0.99; const float kTextPosY = 0.99;
-const float kTextCharWidth = 0.06; const float kTextCharHeight = 0.05;
-void main() {
-    int idx = gl_VertexID; vec4 pos; vec2 tex; float type;
-    float sw = transform.s_c.x; float sh = transform.s_c.y;
-    float cw = transform.s_c.z; float ch = transform.s_c.w;
-    float rot = transform.rot_p.x;
-    if (idx < 6) {
-        type = 0.0;
-        bool isRot = (rot == 90.0 || rot == 270.0);
-        float acW = isRot ? ch : cw;
-        float acH = isRot ? cw : ch;
-        float sA = sw / sh;
-        float cA = acW / acH;
-        float cL = 0.0, cR = 1.0, cT = 0.0, cB = 1.0;
-        if (sA > cA) { float r = cA / sA; float a = (1.0 - r) / 2.0; cT = a; cB = 1.0 - a; }
-        else { float r = sA / cA; float a = (1.0 - r) / 2.0; cL = a; cR = 1.0 - a; }
-        float uvs[8];
-        if (rot == 90.0) { uvs[0] = cL; uvs[1] = cB; uvs[2] = cR; uvs[3] = cB; uvs[4] = cL; uvs[5] = cT; uvs[6] = cR; uvs[7] = cT; }
-        else { uvs[0] = cL; uvs[1] = cT; uvs[2] = cL; uvs[3] = cB; uvs[4] = cR; uvs[5] = cT; uvs[6] = cR; uvs[7] = cB; }
-        if (idx == 0) { pos = vec4(-1.0,  1.0, 0.0, 1.0); tex = vec2(uvs[0], uvs[1]); }
-        else if (idx == 1) { pos = vec4(-1.0, -1.0, 0.0, 1.0); tex = vec2(uvs[2], uvs[3]); }
-        else if (idx == 2) { pos = vec4( 1.0,  1.0, 0.0, 1.0); tex = vec2(uvs[4], uvs[5]); }
-        else if (idx == 3) { pos = vec4(-1.0, -1.0, 0.0, 1.0); tex = vec2(uvs[2], uvs[3]); }
-        else if (idx == 4) { pos = vec4( 1.0, -1.0, 0.0, 1.0); tex = vec2(uvs[6], uvs[7]); }
-        else if (idx == 5) { pos = vec4( 1.0,  1.0, 0.0, 1.0); tex = vec2(uvs[4], uvs[5]); }
-    } else {
-        type = 1.0; int vIdx = idx - 6; int cIdx = vIdx / 6; int tIdx = vIdx % 6;
-        int code;
-        float epoch = timestamp.timeData.x;
-        int h = int(mod(epoch / 3600.0, 24.0));
-        int m = int(mod(epoch / 60.0, 60.0));
-        int s = int(mod(epoch, 60.0));
-        if (cIdx == 0) code = h / 10; else if (cIdx == 1) code = h % 10;
-        else if (cIdx == 2) code = 10; else if (cIdx == 3) code = m / 10;
-        else if (cIdx == 4) code = m % 10; else if (cIdx == 5) code = 10;
-        else if (cIdx == 6) code = s / 10; else if (cIdx == 7) code = s % 10;
-        float uS = float(code) / 11.0; float uE = float(code + 1) / 11.0;
-        float xP = kTextPosX + float(cIdx) * kTextCharWidth;
-        if (tIdx == 0) { pos = vec4(xP, kTextPosY, 0.0, 1.0); tex = vec2(uS, 0.0); }
-        else if (tIdx == 1) { pos = vec4(xP, kTextPosY - kTextCharHeight, 0.0, 1.0); tex = vec2(uS, 1.0); }
-        else if (tIdx == 2) { pos = vec4(xP + kTextCharWidth, kTextPosY, 0.0, 1.0); tex = vec2(uE, 0.0); }
-        else if (tIdx == 3) { pos = vec4(xP, kTextPosY - kTextCharHeight, 0.0, 1.0); tex = vec2(uS, 1.0); }
-        else if (tIdx == 4) { pos = vec4(xP + kTextCharWidth, kTextPosY - kTextCharHeight, 0.0, 1.0); tex = vec2(uE, 1.0); }
-        else if (tIdx == 5) { pos = vec4(xP + kTextCharWidth, kTextPosY, 0.0, 1.0); tex = vec2(uE, 0.0); }
-    }
-    gl_Position = pos; vTexCoord = tex; vType = type;
-})";
-
-const char* FS = R"(#version 300 es
-#extension GL_OES_EGL_image_external_essl3 : require
-precision mediump float;
-uniform samplerExternalOES sCamera;
-uniform sampler2D sFont;
-in vec2 vTexCoord; in float vType;
-out vec4 fragColor;
-void main() {
-    if (vType < 0.5) fragColor = texture(sCamera, vTexCoord);
-    else {
-        vec4 fontColor = texture(sFont, vTexCoord);
-        fragColor = vec4(1.0, 1.0, 0.0, fontColor.a);
-    }
-})";
-
-void RenderSystem::Init(GraphicsComponent& graphics) {
-    graphics.renderProgram = ShaderManager::CreateGraphicsProgram(VS, FS);
+void RenderSystem::Init(GraphicsComponent& graphics, AAssetManager* assetManager) {
+    graphics.renderProgram = ShaderManager::CreateGraphicsProgramFromAssets(assetManager, "shaders/scene.vert", "shaders/scene.frag");
 
     GLuint transformIdx = glGetUniformBlockIndex(graphics.renderProgram, "TransformBlock");
     glUniformBlockBinding(graphics.renderProgram, transformIdx, 1);
@@ -156,6 +88,9 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
 
     glUseProgram(graphics.renderProgram);
 
+#ifdef MEASUREMENT_ENABLED
+    ATrace_beginSection("ZeroStall_UboUpdate");
+#endif
     // Update Transform UBO
     glBindBuffer(GL_UNIFORM_BUFFER, mTransformUbo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(TransformComponent), &transform);
@@ -163,7 +98,13 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
     // Update Timestamp UBO
     glBindBuffer(GL_UNIFORM_BUFFER, mTimestampUbo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(TimestampComponent), &timestamp);
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+#endif
 
+#ifdef MEASUREMENT_ENABLED
+    ATrace_beginSection("ZeroStall_TextureBind");
+#endif
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, graphics.cameraTextureId);
     glUniform1i(glGetUniformLocation(graphics.renderProgram, "sCamera"), 0);
@@ -171,6 +112,9 @@ void RenderSystem::DrawFrame(GraphicsComponent& graphics, const TransformCompone
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, graphics.fontAtlasTextureId);
     glUniform1i(glGetUniformLocation(graphics.renderProgram, "sFont"), 1);
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+#endif
 
     // Single procedural draw call for all 54 vertices (6 BG + 48 Text)
     glEnable(GL_BLEND);

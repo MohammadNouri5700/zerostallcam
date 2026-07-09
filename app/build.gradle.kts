@@ -39,7 +39,8 @@ android {
             optimization {
                 enable = false
             }
-            buildConfigField("boolean", "MEASUREMENT", "false")
+            buildConfigField("boolean", "MEASUREMENT", "true")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -66,4 +67,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+//    debugImplementation(libs.leakcanary)
 }

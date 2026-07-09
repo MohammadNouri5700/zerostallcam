@@ -5,12 +5,13 @@
 #include "../Components/TransformComponent.h"
 #include "../Components/TimestampComponent.h"
 #include <android/hardware_buffer.h>
+#include <android/asset_manager.h>
 
 namespace ecs {
 
 class RenderSystem {
 public:
-    static void Init(GraphicsComponent& graphics);
+    static void Init(GraphicsComponent& graphics, AAssetManager* assetManager);
     static void UpdateCameraBuffer(GraphicsComponent& graphics, AHardwareBuffer* buffer);
     static void SetFontAtlas(GraphicsComponent& graphics, int width, int height, void* pixels);
     static void DrawFrame(GraphicsComponent& graphics, const TransformComponent& transform, const TimestampComponent& timestamp);

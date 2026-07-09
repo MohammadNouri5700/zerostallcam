@@ -1,10 +1,18 @@
 #include "ShaderManager.h"
 #include <android/log.h>
+#include <vector>
 
 #define LOG_TAG "ZeroStallShaderManager"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 namespace ecs {
+
+GLuint ShaderManager::CreateGraphicsProgramFromAssets(AAssetManager* assetManager, const char* vsPath, const char* fsPath) {
+    std::string vsSource = LoadAssetAsString(assetManager, vsPath);
+    std::string fsSource = LoadAssetAsString(assetManager, fsPath);
+    if (vsSource.empty() || fsSource.empty()) return 0;
+    return CreateGraphicsProgram(vsSource.c_str(), fsSource.c_str());
+}
 
 GLuint ShaderManager::CreateGraphicsProgram(const char* vs, const char* fs) {
     GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vs);
@@ -72,6 +80,19 @@ GLuint ShaderManager::CompileShader(GLenum type, const char* source) {
         return 0;
     }
     return shader;
+}
+
+std::string ShaderManager::LoadAssetAsString(AAssetManager* assetManager, const char* path) {
+    AAsset* asset = AAssetManager_open(assetManager, path, AASSET_MODE_BUFFER);
+    if (!asset) {
+        LOGE("Failed to open asset: %s", path);
+        return "";
+    }
+    off_t length = AAsset_getLength(asset);
+    std::string content(length, '\0');
+    AAsset_read(asset, &content[0], (size_t)length);
+    AAsset_close(asset);
+    return content;
 }
 
 } // namespace ecs
