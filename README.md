@@ -58,15 +58,8 @@ We utilize `GL_EXT_disjoint_timer_query` to measure actual GPU execution time in
 Understanding the path of a single pixel is critical to our optimization strategy:
 
 ```mermaid
-graph TD
-    A[Choreographer Vsync] -->|JNI Dispatch| B(JniBridge.cpp)
-    B --> C{Engine::DrawFrame}
-    C --> D[BufferSystem::AcquireLatest]
-    D -->|AHardwareBuffer| E[RenderSystem::UpdateTexture]
-    E -->|EGLImage Mapping| F[OpenGL GPU Execution]
-    F --> G[eglSwapBuffers]
-    G --> H[SurfaceFlinger]
-    H --> I[Physical Display]
+graph LR
+    Vsync --> JNI --> Engine --> Buffer --> OpenGL --> SurfaceFlinger --> Display
 ```
 
 ## **Detailed Engine Flow**
@@ -97,4 +90,4 @@ graph TD
 This project is licensed under the Apache License 2.0.
 
 ---
-*Senior Graphics Engineering Team | ZeroStallCam Project*
+
