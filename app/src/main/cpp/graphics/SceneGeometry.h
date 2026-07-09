@@ -10,7 +10,7 @@ public:
     ~SceneGeometry();
 
     void Create();
-    void Update();
+    void Update(const float* bakedUVs);
     void Terminate();
     GLuint GetVboId() const { return m_VboId; }
 

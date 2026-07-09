@@ -19,6 +19,8 @@ public:
     void DrawFrame();
 
 private:
+    void CalculatePreBakedUVs(int screenW, int screenH, int camW, int camH, int rotationDeg, float* outUVs);
+
     std::unique_ptr<EglManager> m_Egl;
     std::unique_ptr<ShaderProgram> m_Shader;
     std::unique_ptr<SceneGeometry> m_Geometry;
@@ -26,6 +28,12 @@ private:
     GLuint m_CameraTextureId;
     GLuint m_FontAtlasTextureId;
     EGLImageKHR m_EglImage;
+    AHardwareBuffer* m_CurrentBuffer;
+
+    float m_BakedUVs[8];
+    int m_WindowWidth, m_WindowHeight;
+    static constexpr int kCameraWidth = 1920;
+    static constexpr int kCameraHeight = 1080;
 
     PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
     PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;

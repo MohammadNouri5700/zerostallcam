@@ -34,6 +34,13 @@ AHardwareBuffer* ImageProvider::AcquireLatestBuffer() {
     if (AImageReader_acquireLatestImage(m_ImageReader, &image) != AMEDIA_OK) return nullptr;
     AHardwareBuffer* buffer = nullptr;
     AImage_getHardwareBuffer(image, &buffer);
+
+    if (buffer) {
+        // Tell the OS: "Do not recycle this memory! I am using it!"
+        AHardwareBuffer_acquire(buffer);
+    }
+
+    // Now it is safe to delete the wrapper
     AImage_delete(image);
     return buffer;
 }

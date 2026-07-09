@@ -11,7 +11,7 @@ void SceneGeometry::Create() {
     glGenBuffers(1, &m_VboId);
 }
 
-void SceneGeometry::Update() {
+void SceneGeometry::Update(const float* bakedUVs) {
     time_t rawtime;
     struct tm * timeinfo;
     char buffer[10];
@@ -22,12 +22,13 @@ void SceneGeometry::Update() {
     std::vector<float> vertices;
     // 1. Background (2 triangles, type 0.0)
     float bg[] = {
-        -1.0f,  1.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-         1.0f,  1.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-         1.0f, -1.0f, 0.0f, 1.0f,  1.0f, 1.0f, 0.0f,
-         1.0f,  1.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,  bakedUVs[0], bakedUVs[1], 0.0f, // Top Left
+        -1.0f, -1.0f, 0.0f, 1.0f,  bakedUVs[2], bakedUVs[3], 0.0f, // Bottom Left
+         1.0f,  1.0f, 0.0f, 1.0f,  bakedUVs[4], bakedUVs[5], 0.0f, // Top Right
+
+        -1.0f, -1.0f, 0.0f, 1.0f,  bakedUVs[2], bakedUVs[3], 0.0f, // Bottom Left
+         1.0f, -1.0f, 0.0f, 1.0f,  bakedUVs[6], bakedUVs[7], 0.0f, // Bottom Right
+         1.0f,  1.0f, 0.0f, 1.0f,  bakedUVs[4], bakedUVs[5], 0.0f, // Top Right
     };
     vertices.insert(vertices.end(), bg, bg + 42);
 

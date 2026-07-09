@@ -38,9 +38,12 @@ void main() {
 
 Renderer::Renderer() :
     m_CameraTextureId(0), m_FontAtlasTextureId(0), m_EglImage(EGL_NO_IMAGE_KHR),
+    m_CurrentBuffer(nullptr),
     eglCreateImageKHR(nullptr), eglDestroyImageKHR(nullptr),
     glEGLImageTargetTexture2DOES(nullptr), eglGetNativeClientBufferANDROID(nullptr),
-    m_FrameCount(0) {
+    m_FrameCount(0), m_WindowWidth(0), m_WindowHeight(0) {
+
+    for (int i = 0; i < 8; i++) m_BakedUVs[i] = 0.0f;
 
     m_Egl = std::make_unique<EglManager>();
     m_Shader = std::make_unique<ShaderProgram>();
@@ -55,6 +58,8 @@ Renderer::~Renderer() {
 
 void Renderer::Init(ANativeWindow* window) {
     m_Egl->Init(window);
+    m_WindowWidth = ANativeWindow_getWidth(window);
+    m_WindowHeight = ANativeWindow_getHeight(window);
 
     eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
     eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
@@ -69,6 +74,9 @@ void Renderer::Init(ANativeWindow* window) {
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     m_Geometry->Create();
+
+    // Default Android camera rotation is 90 degrees for back sensor
+    CalculatePreBakedUVs(m_WindowWidth, m_WindowHeight, kCameraWidth, kCameraHeight, 90, m_BakedUVs);
 }
 
 void Renderer::CreateHDFontAtlas(int width, int height, void* pixels) {
@@ -86,11 +94,55 @@ void Renderer::UpdateCameraBuffer(AHardwareBuffer* buffer) {
     if (m_EglImage != EGL_NO_IMAGE_KHR) {
         eglDestroyImageKHR(m_Egl->GetDisplay(), m_EglImage);
     }
+    m_CurrentBuffer = buffer;
     EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(buffer);
     m_EglImage = eglCreateImageKHR(m_Egl->GetDisplay(), EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, m_CameraTextureId);
     glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, m_EglImage);
+}
+
+void Renderer::CalculatePreBakedUVs(int screenW, int screenH, int camW, int camH, int rotationDeg, float* outUVs) {
+    bool isRotated = (rotationDeg == 90 || rotationDeg == 270);
+    float activeCamW = isRotated ? (float)camH : (float)camW;
+    float activeCamH = isRotated ? (float)camW : (float)camH;
+
+    float screenAspect = (float)screenW / (float)screenH;
+    float camAspect = activeCamW / activeCamH;
+
+    // Calculate crop percentages (0.0 to 1.0)
+    float cropLeft = 0.0f, cropRight = 1.0f;
+    float cropTop = 0.0f, cropBottom = 1.0f;
+
+    if (screenAspect > camAspect) {
+        // Screen is wider, crop top and bottom
+        float ratio = camAspect / screenAspect;
+        float cropAmount = (1.0f - ratio) / 2.0f;
+        cropTop = cropAmount;
+        cropBottom = 1.0f - cropAmount;
+    } else {
+        // Screen is taller, crop left and right
+        float ratio = screenAspect / camAspect;
+        float cropAmount = (1.0f - ratio) / 2.0f;
+        cropLeft = cropAmount;
+        cropRight = 1.0f - cropAmount;
+    }
+
+    // Assign the UVs based on sensor rotation (90 degrees corrected for both vertical and horizontal orientation)
+    if (rotationDeg == 90) {
+        // Vertical mapping: Top to Bottom samples cropLeft to cropRight
+        // Horizontal mapping: Left to Right samples cropBottom to cropTop (Flipped to fix left/right movement)
+        outUVs[0] = cropLeft;  outUVs[1] = cropBottom;
+        outUVs[2] = cropRight; outUVs[3] = cropBottom;
+        outUVs[4] = cropLeft;  outUVs[5] = cropTop;
+        outUVs[6] = cropRight; outUVs[7] = cropTop;
+    } else {
+        // Default (0 degrees or unsupported)
+        outUVs[0] = cropLeft;  outUVs[1] = cropTop;
+        outUVs[2] = cropLeft;  outUVs[3] = cropBottom;
+        outUVs[4] = cropRight; outUVs[5] = cropTop;
+        outUVs[6] = cropRight; outUVs[7] = cropBottom;
+    }
 }
 
 void Renderer::DrawFrame() {
@@ -104,7 +156,7 @@ void Renderer::DrawFrame() {
 #ifdef MEASUREMENT_ENABLED
     ATrace_beginSection("ZeroStall_UpdateGeometry");
 #endif
-    m_Geometry->Update();
+    m_Geometry->Update(m_BakedUVs);
 #ifdef MEASUREMENT_ENABLED
     ATrace_endSection();
 #endif
@@ -138,6 +190,13 @@ void Renderer::DrawFrame() {
     ATrace_beginSection("ZeroStall_eglSwapBuffers");
 #endif
     m_Egl->SwapBuffers();
+
+    // Unlock the memory so the camera hardware can write a new frame into it
+    if (m_CurrentBuffer) {
+        AHardwareBuffer_release(m_CurrentBuffer);
+        m_CurrentBuffer = nullptr;
+    }
+
 #ifdef MEASUREMENT_ENABLED
     ATrace_endSection();
 
