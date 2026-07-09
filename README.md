@@ -12,11 +12,12 @@ ZeroStallCam is engineered for stability. Our profiling results demonstrate a hi
 | --- | --- | --- | --- |
 | 1668 | 15.28 | 22.3 | 1.32 |
 
+The engine's performance is visually validated by rendering a high-performance texture overlay that displays the current time in `hh:mm:ss` format, processed entirely on the GPU.
+
 ## **Performance Analysis**
 *   **Targeting 60 FPS:** With an **average frame time of 15.28 ms**, ZeroStallCam fits within the 16.66 ms budget required for a fluid 60 FPS experience.
 *   **Thread Efficiency:** The **1.32 ms blocking time** indicates that the native thread is rarely starved for CPU resources. Synchronization between JNI and C++ is minimized to prevent "jank."
 *   **GPU vs CPU Budget:** The engine utilizes `GL_EXT_disjoint_timer_query` (where supported) to measure GPU execution time independently of CPU logic, ensuring a balanced workload.
-*   **Real-time Overlay:** The performance tracing is validated visually by rendering a high-performance texture overlay that displays the current epoch time in `hh:mm:ss` format, processed entirely on the GPU.
 
 ## **Core Technology & Optimization**
 
