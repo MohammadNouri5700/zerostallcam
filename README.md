@@ -36,7 +36,9 @@ State updates (Transforms, Timestamps) are batched using UBOs.
 ### **3. Asynchronous GPU Profiling**
 We utilize `GL_EXT_disjoint_timer_query` to measure actual GPU execution time independently of the CPU. This provides high-fidelity performance metrics without the pipeline stalls associated with `glFinish()`.
 
-## **Project Structure & File Map**
+## **Project Structure & ECS Design Pattern**
+
+The engine follows the **Entity Component System (ECS)** architectural pattern to decouple data from logic, ensuring high cache efficiency and modularity.
 
 | Category | File | Description |
 | :--- | :--- | :--- |
