@@ -19,10 +19,27 @@ android {
     }
 
     buildTypes {
+        debug {
+            externalNativeBuild {
+                cmake {
+                    cppFlags("-DMEASUREMENT_ENABLED=true")
+                }
+            }
+        }
+        create("measurement") {
+            initWith(getByName("debug"))
+            externalNativeBuild {
+                cmake {
+                    cppFlags("-DMEASUREMENT_ENABLED=true")
+                }
+            }
+            buildConfigField("boolean", "MEASUREMENT", "true")
+        }
         release {
             optimization {
                 enable = false
             }
+            buildConfigField("boolean", "MEASUREMENT", "false")
         }
     }
     compileOptions {
@@ -37,6 +54,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

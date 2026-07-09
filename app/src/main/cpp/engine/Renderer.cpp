@@ -1,5 +1,11 @@
 #include "Renderer.h"
 #include <GLES2/gl2ext.h>
+#include <chrono>
+#include <android/trace.h>
+#include <android/log.h>
+
+#define LOG_TAG "ZeroStallRenderer"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 const char* VS = R"(#version 300 es
 layout(location = 0) in vec4 aPosition;
@@ -33,7 +39,8 @@ void main() {
 Renderer::Renderer() :
     m_CameraTextureId(0), m_EglImage(EGL_NO_IMAGE_KHR),
     eglCreateImageKHR(nullptr), eglDestroyImageKHR(nullptr),
-    glEGLImageTargetTexture2DOES(nullptr), eglGetNativeClientBufferANDROID(nullptr) {
+    glEGLImageTargetTexture2DOES(nullptr), eglGetNativeClientBufferANDROID(nullptr),
+    m_FrameCount(0) {
 
     m_Egl = std::make_unique<EglManager>();
     m_Shader = std::make_unique<ShaderProgram>();
@@ -78,8 +85,21 @@ void Renderer::UpdateCameraBuffer(AHardwareBuffer* buffer) {
 }
 
 void Renderer::DrawFrame() {
+#ifdef MEASUREMENT_ENABLED
+    auto startTime = std::chrono::steady_clock::now();
+    ATrace_beginSection("ZeroStall_DrawFrame");
+#endif
+
     glClear(GL_COLOR_BUFFER_BIT);
+
+#ifdef MEASUREMENT_ENABLED
+    ATrace_beginSection("ZeroStall_UpdateGeometry");
+#endif
     m_Geometry->Update();
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+#endif
+
     m_Shader->Use();
 
     glActiveTexture(GL_TEXTURE0);
@@ -105,5 +125,21 @@ void Renderer::DrawFrame() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDrawArrays(GL_TRIANGLES, 6, 48);
 
+#ifdef MEASUREMENT_ENABLED
+    ATrace_beginSection("ZeroStall_eglSwapBuffers");
+#endif
     m_Egl->SwapBuffers();
+#ifdef MEASUREMENT_ENABLED
+    ATrace_endSection();
+
+    ATrace_endSection(); // End DrawFrame
+
+    auto endTime = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> frameTime = endTime - startTime;
+
+    m_FrameCount++;
+    if (m_FrameCount % 60 == 0) { // Log once per second at 60fps
+        LOGI("Frame Time: %.2f ms | FPS: %.1f", frameTime.count(), 1000.0 / frameTime.count());
+    }
+#endif
 }
