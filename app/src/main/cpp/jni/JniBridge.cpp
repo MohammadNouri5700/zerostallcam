@@ -1,16 +1,18 @@
 #include <jni.h>
 #include <android/native_window_jni.h>
 #include <android/bitmap.h>
+#include <android/asset_manager_jni.h>
 #include "../Systems/Engine.h"
 #include <memory>
 
 static std::unique_ptr<ecs::Engine> g_Engine;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_zerostallcam_ZeroStallCamView_nativeSurfaceCreated(JNIEnv* env, jobject thiz, jobject surface) {
+Java_com_example_zerostallcam_ZeroStallCamView_nativeSurfaceCreated(JNIEnv* env, jobject thiz, jobject surface, jobject assetManager) {
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
+    AAssetManager* am = AAssetManager_fromJava(env, assetManager);
     g_Engine = std::make_unique<ecs::Engine>();
-    g_Engine->Init(window);
+    g_Engine->Init(window, am);
 }
 
 extern "C" JNIEXPORT void JNICALL
