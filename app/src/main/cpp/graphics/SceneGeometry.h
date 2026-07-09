@@ -14,6 +14,12 @@ public:
     void Terminate();
     GLuint GetVboId() const { return m_VboId; }
 
+    // Text Layout Constants (NDC: -1 to 1)
+    static constexpr float kTextPosX = -0.99f;
+    static constexpr float kTextPosY = 0.99f;
+    static constexpr float kTextCharWidth = 0.06f;
+    static constexpr float kTextCharHeight = 0.05f;
+
 private:
     GLuint m_VboId;
 };

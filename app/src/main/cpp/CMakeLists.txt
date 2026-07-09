@@ -7,7 +7,6 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         engine/CameraEngine.cpp
         graphics/EglManager.cpp
         graphics/ShaderProgram.cpp
-        graphics/FontAtlas.cpp
         graphics/SceneGeometry.cpp
         camera/NDKCamera.cpp
         camera/ImageProvider.cpp)
@@ -18,4 +17,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         mediandk
         EGL
         GLESv3
+        jnigraphics
         log)

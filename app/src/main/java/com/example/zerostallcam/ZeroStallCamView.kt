@@ -25,12 +25,30 @@ class ZeroStallCamView(context: Context, attrs: AttributeSet) : SurfaceView(cont
     private external fun nativeSurfaceDestroyed()
     private external fun nativeStartCamera()
     private external fun nativeDrawFrame()
+    private external fun nativeSetFontAtlas(bitmap: android.graphics.Bitmap)
 
     override fun surfaceCreated(holder: SurfaceHolder) {
         nativeSurfaceCreated(holder.surface)
+        initHDTimestamp()
         nativeStartCamera()
         isRendering = true
         Choreographer.getInstance().postFrameCallback(frameCallback)
+    }
+
+    private fun initHDTimestamp() {
+        val bitmap = android.graphics.Bitmap.createBitmap(1100, 100, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 80f
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        }
+        val text = "0123456789:"
+        for (i in text.indices) {
+            canvas.drawText(text[i].toString(), i * 100f + 10f, 80f, paint)
+        }
+        nativeSetFontAtlas(bitmap)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {

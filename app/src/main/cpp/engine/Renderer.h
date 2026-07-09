@@ -3,7 +3,6 @@
 
 #include "../graphics/EglManager.h"
 #include "../graphics/ShaderProgram.h"
-#include "../graphics/FontAtlas.h"
 #include "../graphics/SceneGeometry.h"
 #include <EGL/eglext.h>
 #include <GLES2/gl2ext.h>
@@ -16,15 +15,16 @@ public:
 
     void Init(ANativeWindow* window);
     void UpdateCameraBuffer(AHardwareBuffer* buffer);
+    void CreateHDFontAtlas(int width, int height, void* pixels);
     void DrawFrame();
 
 private:
     std::unique_ptr<EglManager> m_Egl;
     std::unique_ptr<ShaderProgram> m_Shader;
-    std::unique_ptr<FontAtlas> m_FontAtlas;
     std::unique_ptr<SceneGeometry> m_Geometry;
 
     GLuint m_CameraTextureId;
+    GLuint m_FontAtlasTextureId;
     EGLImageKHR m_EglImage;
 
     PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;

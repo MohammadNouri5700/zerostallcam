@@ -32,24 +32,21 @@ void SceneGeometry::Update() {
     vertices.insert(vertices.end(), bg, bg + 42);
 
     // 2. Timestamp (8 chars, 2 triangles each, type 1.0)
-    float xPos = -0.9f;
-    float yPos = 0.8f;
-    float charW = 0.05f;
-    float charH = 0.1f;
+    float xPos = kTextPosX;
     for (int i = 0; i < 8; ++i) {
         int glyphIdx = (buffer[i] == ':') ? 10 : (buffer[i] - '0');
-        float uS = (glyphIdx * 10.0f) / 128.0f;
-        float uE = (glyphIdx * 10.0f + 8.0f) / 128.0f;
+        float uS = (float)glyphIdx / 11.0f;
+        float uE = (float)(glyphIdx + 1) / 11.0f;
         float v[] = {
-            xPos,       yPos,       0.0f, 1.0f,  uS, 0.0f, 1.0f,
-            xPos,       yPos-charH, 0.0f, 1.0f,  uS, 1.0f, 1.0f,
-            xPos+charW, yPos,       0.0f, 1.0f,  uE, 0.0f, 1.0f,
-            xPos,       yPos-charH, 0.0f, 1.0f,  uS, 1.0f, 1.0f,
-            xPos+charW, yPos-charH, 0.0f, 1.0f,  uE, 1.0f, 1.0f,
-            xPos+charW, yPos,       0.0f, 1.0f,  uE, 0.0f, 1.0f,
+            xPos,                kTextPosY,                    0.0f, 1.0f,  uS, 0.0f, 1.0f,
+            xPos,                kTextPosY - kTextCharHeight,  0.0f, 1.0f,  uS, 1.0f, 1.0f,
+            xPos+kTextCharWidth, kTextPosY,                    0.0f, 1.0f,  uE, 0.0f, 1.0f,
+            xPos,                kTextPosY - kTextCharHeight,  0.0f, 1.0f,  uS, 1.0f, 1.0f,
+            xPos+kTextCharWidth, kTextPosY - kTextCharHeight,  0.0f, 1.0f,  uE, 1.0f, 1.0f,
+            xPos+kTextCharWidth, kTextPosY,                    0.0f, 1.0f,  uE, 0.0f, 1.0f,
         };
         vertices.insert(vertices.end(), v, v + 42);
-        xPos += charW;
+        xPos += kTextCharWidth;
     }
     glBindBuffer(GL_ARRAY_BUFFER, m_VboId);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);

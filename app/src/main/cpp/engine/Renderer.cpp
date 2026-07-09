@@ -32,19 +32,18 @@ void main() {
         fragColor = texture(sCamera, vTexCoord);
     } else {
         vec4 fontColor = texture(sFont, vTexCoord);
-        fragColor = vec4(1.0, 1.0, 0.0, fontColor.r);
+        fragColor = vec4(1.0, 1.0, 0.0, fontColor.a);
     }
 })";
 
 Renderer::Renderer() :
-    m_CameraTextureId(0), m_EglImage(EGL_NO_IMAGE_KHR),
+    m_CameraTextureId(0), m_FontAtlasTextureId(0), m_EglImage(EGL_NO_IMAGE_KHR),
     eglCreateImageKHR(nullptr), eglDestroyImageKHR(nullptr),
     glEGLImageTargetTexture2DOES(nullptr), eglGetNativeClientBufferANDROID(nullptr),
     m_FrameCount(0) {
 
     m_Egl = std::make_unique<EglManager>();
     m_Shader = std::make_unique<ShaderProgram>();
-    m_FontAtlas = std::make_unique<FontAtlas>();
     m_Geometry = std::make_unique<SceneGeometry>();
 }
 
@@ -69,8 +68,18 @@ void Renderer::Init(ANativeWindow* window) {
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    m_FontAtlas->Create();
     m_Geometry->Create();
+}
+
+void Renderer::CreateHDFontAtlas(int width, int height, void* pixels) {
+    if (m_FontAtlasTextureId != 0) {
+        glDeleteTextures(1, &m_FontAtlasTextureId);
+    }
+    glGenTextures(1, &m_FontAtlasTextureId);
+    glBindTexture(GL_TEXTURE_2D, m_FontAtlasTextureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 }
 
 void Renderer::UpdateCameraBuffer(AHardwareBuffer* buffer) {
@@ -107,7 +116,7 @@ void Renderer::DrawFrame() {
     glUniform1i(glGetUniformLocation(m_Shader->GetId(), "sCamera"), 0);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_FontAtlas->GetTextureId());
+    glBindTexture(GL_TEXTURE_2D, m_FontAtlasTextureId);
     glUniform1i(glGetUniformLocation(m_Shader->GetId(), "sFont"), 1);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_Geometry->GetVboId());
