@@ -57,10 +57,7 @@ We utilize `GL_EXT_disjoint_timer_query` to measure actual GPU execution time in
 ## **Frame Lifecycle**
 Understanding the path of a single pixel is critical to our optimization strategy:
 
-```mermaid
-graph LR
-    Vsync --> JNI --> Engine --> Buffer --> OpenGL --> SurfaceFlinger --> Display
-```
+Vsync -> JNI -> Engine -> Buffer -> OpenGL -> SurfaceFlinger -> Display
 
 ## **Detailed Engine Flow**
 
